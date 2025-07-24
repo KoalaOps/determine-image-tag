@@ -82,11 +82,42 @@ jobs:
         run: |
           echo "Custom tag: ${{ steps.test-custom.outputs.tag }}"
           
-          # Verify special characters are replaced
-          if [[ "${{ steps.test-custom.outputs.tag }}" != "v1.2.3_release_candidate" ]]; then
+          # Verify special characters are replaced with default separator (-)
+          if [[ "${{ steps.test-custom.outputs.tag }}" != "v1.2.3-release-candidate" ]]; then
             echo "ERROR: Custom tag not normalized correctly"
+            echo "Expected: v1.2.3-release-candidate"
+            echo "Actual: ${{ steps.test-custom.outputs.tag }}"
             exit 1
           fi
+
+  test-custom-separator:
+    runs-on: ubuntu-latest
+    name: Test Custom Branch Separator
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Test with underscore separator
+        uses: ./
+        id: test-underscore
+        with:
+          service_name: api
+          branch_separator: "_"
+          # Simulating feature/new-api branch
+          branch_ref: "refs/heads/feature/new-api"
+          
+      - name: Verify underscore separator
+        run: |
+          echo "Tag: ${{ steps.test-underscore.outputs.tag }}"
+          BRANCH="${{ steps.test-underscore.outputs.branch }}"
+          
+          # Verify branch uses underscore
+          if [[ "$BRANCH" != "feature_new-api" ]]; then
+            echo "ERROR: Branch separator not applied correctly"
+            echo "Expected: feature_new-api"
+            echo "Actual: $BRANCH"
+            exit 1
+          fi
+          echo "✅ Custom separator works correctly"
 
   test-length-limits:
     runs-on: ubuntu-latest
