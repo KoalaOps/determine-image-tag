@@ -142,9 +142,11 @@ runs:
               echo "⚠️  Cannot access remote tags, using local tags for counter"
               COUNTER=$(git tag -l "${TAG}_[0-9][0-9]" | wc -l | tr -d ' ')
             fi
+            echo "🔢 Raw counter value: $COUNTER"
             COUNTER=$(printf "%02d" $COUNTER)
+            echo "🔢 Formatted counter: $COUNTER"
             COUNTER_SUFFIX="_${COUNTER}"
-            echo "🔢 Counter: $COUNTER"
+            echo "🔢 Counter suffix: $COUNTER_SUFFIX"
           fi
           
           # Handle length limits and truncation (account for counter suffix length)
