@@ -66,12 +66,29 @@ A GitHub Action that generates consistent, unique image tags for container build
 
 ### Tag Formats
 
-- **`service-date-branch-counter`**: `{service}_{date}_{branch}_{counter}` (default)
+The action generates tags in different formats based on your needs:
+
+#### `service-date-branch-counter` (default)
+- **With service_name**: `{service}_{date}_{branch}_{counter}`
   - Example: `api-gateway_2024-01-15_main_00`
-- **`branch-date-counter`**: `{branch}_{date}_{counter}`
-  - Example: `feature-login_2024-01-15_01`
-- **`date-branch`**: `{date}_{branch}`
-  - Example: `2024-01-15_develop`
+- **Without service_name**: `{date}_{branch}_{counter}`
+  - Example: `2024-01-15_main_00`
+
+#### `branch-date-counter`
+- Format: `{branch}_{date}_{counter}`
+- Example: `feature-login_2024-01-15_00`
+- Example: `main_2024-01-15_03`
+
+#### `date-branch`
+- Format: `{date}_{branch}` (no counter)
+- Example: `2024-01-15_develop`
+- Example: `2024-01-15_feature-xyz`
+
+**Notes:**
+- Dates are always in `YYYY-MM-DD` format
+- Counters are 2-digit zero-padded numbers (00, 01, 02, etc.)
+- Branch names have special characters (`/`, `:`, `@`, `#`) replaced with `_`
+- Tags are truncated if they exceed `max_length` (default: 63 characters)
 
 ## Outputs
 
@@ -80,6 +97,77 @@ A GitHub Action that generates consistent, unique image tags for container build
 | `tag` | The generated image tag |
 | `commit_hash` | The current git commit hash |
 | `branch` | The normalized branch name |
+
+## Tag Generation Examples
+
+Here are examples showing exactly what tags will be generated with different inputs:
+
+### Default Configuration
+```yaml
+- uses: koalaops/determine-image-tag@v1
+  # No inputs provided
+```
+**Result**: `2024-01-15_main_00` (assuming main branch, first build of the day)
+
+### With Service Name
+```yaml
+- uses: koalaops/determine-image-tag@v1
+  with:
+    service_name: api-gateway
+```
+**Result**: `api-gateway_2024-01-15_main_00`
+
+### Feature Branch
+```yaml
+- uses: koalaops/determine-image-tag@v1
+  with:
+    service_name: auth
+    # On branch: feature/user-login
+```
+**Result**: `auth_2024-01-15_feature_user-login_00` (note: `/` replaced with `_`)
+
+### Multiple Builds Same Day
+```yaml
+# First build
+- uses: koalaops/determine-image-tag@v1
+  with:
+    service_name: web
+```
+**Result**: `web_2024-01-15_main_00`
+
+```yaml
+# Second build (same day)
+- uses: koalaops/determine-image-tag@v1
+  with:
+    service_name: web
+```
+**Result**: `web_2024-01-15_main_01` (counter incremented)
+
+### Different Tag Formats
+```yaml
+# Branch-Date format
+- uses: koalaops/determine-image-tag@v1
+  with:
+    tag_format: branch-date-counter
+```
+**Result**: `main_2024-01-15_00`
+
+```yaml
+# Date-Branch format (no counter)
+- uses: koalaops/determine-image-tag@v1
+  with:
+    tag_format: date-branch
+    include_counter: false
+```
+**Result**: `2024-01-15_main`
+
+### Custom Tag Override
+```yaml
+- uses: koalaops/determine-image-tag@v1
+  with:
+    custom_tag: v1.2.3-rc1
+```
+**Result**: `v1.2.3-rc1` (auto-generation skipped)
 
 ## Examples
 

@@ -2,7 +2,7 @@ name: Test Action
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main, develop, debug-counter-issue]
   pull_request:
     branches: [main]
 
