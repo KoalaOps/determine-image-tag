@@ -41,6 +41,10 @@ inputs:
     description: "Working directory where the git repository is located"
     required: false
     default: "."
+  branch_separator:
+    description: "Character to replace special characters in branch names"
+    required: false
+    default: "-"
 
 outputs:
   tag:
@@ -71,6 +75,7 @@ runs:
         INCLUDE_COUNTER="${{ inputs.include_counter }}"
         BRANCH_REF="${{ inputs.branch_ref || github.ref }}"
         PR_REF="${{ inputs.pull_request_ref || github.event.pull_request.head.ref }}"
+        BRANCH_SEP="${{ inputs.branch_separator }}"
         
         # Validate max_length
         if ! [[ "$MAX_LENGTH" =~ ^[0-9]+$ ]] || [ "$MAX_LENGTH" -le 0 ]; then
@@ -88,7 +93,7 @@ runs:
         
         # Use custom tag if provided
         if [ -n "$CUSTOM_TAG" ]; then
-          TAG=$(echo "$CUSTOM_TAG" | tr '/:' '_')
+          TAG=$(echo "$CUSTOM_TAG" | tr '/:' "$BRANCH_SEP")
           echo "✅ Using custom tag: $TAG"
         else
           # Determine branch name
@@ -98,8 +103,8 @@ runs:
             BRANCH=$(echo "$BRANCH_REF" | sed 's#refs/heads/##')
           fi
           
-          # Normalize branch name (replace special characters with underscores)
-          BRANCH=$(echo "$BRANCH" | tr '/:@#' '_')
+          # Normalize branch name (replace special characters with separator)
+          BRANCH=$(echo "$BRANCH" | tr '/:@#' "$BRANCH_SEP")
           echo "branch=$BRANCH" >> $GITHUB_OUTPUT
           echo "📋 Branch: $BRANCH"
           
