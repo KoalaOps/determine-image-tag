@@ -28,9 +28,9 @@ jobs:
           # Verify tag format
           TAG="${{ steps.test1.outputs.tag }}"
           echo "Verifying tag format: $TAG"
-          if [[ ! "$TAG" =~ ^test-service_[0-9]{4}-[0-9]{2}-[0-9]{2}_.+_[0-9]{4}$ ]]; then
+          if [[ ! "$TAG" =~ ^test-service_[0-9]{4}-[0-9]{2}-[0-9]{2}_.+_[0-9]{2}$ ]]; then
             echo "ERROR: Tag format is incorrect"
-            echo "Expected pattern: test-service_YYYY-MM-DD_branch_NNNN"
+            echo "Expected pattern: test-service_YYYY-MM-DD_branch_NN"
             echo "Actual tag: $TAG"
             exit 1
           fi
