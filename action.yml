@@ -1,0 +1,163 @@
+name: Determine Image Tag
+description: |
+  Generates consistent image tags for builds and releases.
+  Supports multiple tag formats and handles duplicate prevention.
+author: "KoalaOps"
+
+branding:
+  icon: "tag"
+  color: "purple"
+
+inputs:
+  service_name:
+    description: "Service name to include in tag (optional)"
+    required: false
+    default: ""
+  custom_tag:
+    description: "Custom tag to use instead of auto-generation"
+    required: false
+    default: ""
+  tag_format:
+    description: "Tag format: 'service-date-branch-counter' (default), 'branch-date-counter', or 'date-branch'"
+    required: false
+    default: "service-date-branch-counter"
+  max_length:
+    description: "Maximum tag length (default: 63 for Kubernetes compatibility)"
+    required: false
+    default: "63"
+  include_counter:
+    description: "Whether to include counter for duplicate prevention"
+    required: false
+    default: "true"
+  branch_ref:
+    description: "Git branch reference (defaults to github.ref)"
+    required: false
+    default: ""
+  pull_request_ref:
+    description: "Pull request head ref (defaults to github.event.pull_request.head.ref)"
+    required: false
+    default: ""
+  working_directory:
+    description: "Working directory where the git repository is located"
+    required: false
+    default: "."
+
+outputs:
+  tag:
+    description: "Generated image tag"
+    value: ${{ steps.generate-tag.outputs.tag }}
+  commit_hash:
+    description: "Current commit hash"
+    value: ${{ steps.generate-tag.outputs.commit_hash }}
+  branch:
+    description: "Normalized branch name"
+    value: ${{ steps.generate-tag.outputs.branch }}
+
+runs:
+  using: composite
+  steps:
+    - name: Generate image tag
+      id: generate-tag
+      shell: bash
+      working-directory: ${{ inputs.working_directory }}
+      run: |
+        echo "🏷️ Generating image tag..."
+        
+        # Get inputs with defaults
+        SERVICE_NAME="${{ inputs.service_name }}"
+        CUSTOM_TAG="${{ inputs.custom_tag }}"
+        TAG_FORMAT="${{ inputs.tag_format }}"
+        MAX_LENGTH="${{ inputs.max_length }}"
+        INCLUDE_COUNTER="${{ inputs.include_counter }}"
+        BRANCH_REF="${{ inputs.branch_ref || github.ref }}"
+        PR_REF="${{ inputs.pull_request_ref || github.event.pull_request.head.ref }}"
+        
+        # Validate max_length
+        if ! [[ "$MAX_LENGTH" =~ ^[0-9]+$ ]] || [ "$MAX_LENGTH" -le 0 ]; then
+          echo "❌ Error: max_length must be a positive integer"
+          exit 1
+        fi
+        
+        # Get commit hash
+        if ! COMMIT_HASH=$(git rev-parse HEAD 2>/dev/null); then
+          echo "❌ Error: Not in a git repository or git is not available"
+          exit 1
+        fi
+        echo "commit_hash=$COMMIT_HASH" >> $GITHUB_OUTPUT
+        echo "COMMIT_HASH=$COMMIT_HASH" >> $GITHUB_ENV
+        
+        # Use custom tag if provided
+        if [ -n "$CUSTOM_TAG" ]; then
+          TAG=$(echo "$CUSTOM_TAG" | tr '/:' '_')
+          echo "✅ Using custom tag: $TAG"
+        else
+          # Determine branch name
+          if [ -n "$PR_REF" ]; then
+            BRANCH="$PR_REF"
+          else
+            BRANCH=$(echo "$BRANCH_REF" | sed 's#refs/heads/##')
+          fi
+          
+          # Normalize branch name (replace special characters with underscores)
+          BRANCH=$(echo "$BRANCH" | tr '/:@#' '_')
+          echo "branch=$BRANCH" >> $GITHUB_OUTPUT
+          echo "📋 Branch: $BRANCH"
+          
+          # Generate date
+          DATE=$(date +'%Y-%m-%d')
+          echo "📅 Date: $DATE"
+          
+          # Generate tag based on format
+          case "$TAG_FORMAT" in
+            "service-date-branch-counter")
+              if [ -n "$SERVICE_NAME" ]; then
+                TAG="${SERVICE_NAME}_${DATE}_${BRANCH}"
+              else
+                TAG="${DATE}_${BRANCH}"
+              fi
+              ;;
+            "branch-date-counter")
+              TAG="${BRANCH}_${DATE}"
+              ;;
+            "date-branch")
+              TAG="${DATE}_${BRANCH}"
+              ;;
+            *)
+              echo "❌ Invalid tag format: $TAG_FORMAT"
+              exit 1
+              ;;
+          esac
+          
+          echo "🔨 Base tag: $TAG"
+          
+          # Add counter if enabled and calculate required space
+          COUNTER_SUFFIX=""
+          if [ "$INCLUDE_COUNTER" = "true" ]; then
+            # Try to get counter from remote tags, fallback to local if remote fails
+            COUNTER=0
+            if git ls-remote --tags origin >/dev/null 2>&1; then
+              # Use precise pattern to match only tags with our exact prefix and counter format
+              COUNTER=$(git ls-remote --tags origin | grep -E "refs/tags/${TAG}_[0-9]{2}(\^{})?$" | wc -l || echo "0")
+            else
+              echo "⚠️  Cannot access remote tags, using local tags for counter"
+              COUNTER=$(git tag -l "${TAG}_[0-9][0-9]" | wc -l | tr -d ' ')
+            fi
+            COUNTER=$(printf "%02d" $COUNTER)
+            COUNTER_SUFFIX="_${COUNTER}"
+            echo "🔢 Counter: $COUNTER"
+          fi
+          
+          # Handle length limits and truncation (account for counter suffix length)
+          SUFFIX_LENGTH=${#COUNTER_SUFFIX}
+          if [ ${#TAG} -gt $((MAX_LENGTH - SUFFIX_LENGTH)) ]; then
+            TAG=${TAG:0:$((MAX_LENGTH - SUFFIX_LENGTH))}
+            echo "✂️ Truncated tag: $TAG"
+          fi
+          
+          # Add counter suffix
+          TAG="${TAG}${COUNTER_SUFFIX}"
+        fi
+        
+        echo "🎯 Final tag: $TAG"
+        echo "tag=$TAG" >> $GITHUB_OUTPUT
+        echo "TAG=$TAG" >> $GITHUB_ENV

@@ -1,0 +1,130 @@
+name: Test Action
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test-basic:
+    runs-on: ubuntu-latest
+    name: Test Basic Tag Generation
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Test with service name
+        uses: ./
+        id: test1
+        with:
+          service_name: test-service
+          
+      - name: Verify outputs
+        run: |
+          echo "Tag: ${{ steps.test1.outputs.tag }}"
+          echo "Commit: ${{ steps.test1.outputs.commit_hash }}"
+          echo "Branch: ${{ steps.test1.outputs.branch }}"
+          
+          # Verify tag format
+          if [[ ! "${{ steps.test1.outputs.tag }}" =~ ^test-service_[0-9]{4}-[0-9]{2}-[0-9]{2}_.+_[0-9]{2}$ ]]; then
+            echo "ERROR: Tag format is incorrect"
+            exit 1
+          fi
+
+  test-formats:
+    runs-on: ubuntu-latest
+    name: Test Different Tag Formats
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Test branch-date-counter format
+        uses: ./
+        id: test-branch-date
+        with:
+          tag_format: branch-date-counter
+          
+      - name: Test date-branch format
+        uses: ./
+        id: test-date-branch
+        with:
+          tag_format: date-branch
+          include_counter: false
+          
+      - name: Verify formats
+        run: |
+          echo "Branch-Date format: ${{ steps.test-branch-date.outputs.tag }}"
+          echo "Date-Branch format: ${{ steps.test-date-branch.outputs.tag }}"
+          
+          # Verify no counter in date-branch format
+          if [[ "${{ steps.test-date-branch.outputs.tag }}" =~ _[0-9]{2}$ ]]; then
+            echo "ERROR: Counter should not be present"
+            exit 1
+          fi
+
+  test-custom-tag:
+    runs-on: ubuntu-latest
+    name: Test Custom Tag
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Test with custom tag
+        uses: ./
+        id: test-custom
+        with:
+          custom_tag: "v1.2.3/release:candidate"
+          
+      - name: Verify custom tag normalization
+        run: |
+          echo "Custom tag: ${{ steps.test-custom.outputs.tag }}"
+          
+          # Verify special characters are replaced
+          if [[ "${{ steps.test-custom.outputs.tag }}" != "v1.2.3_release_candidate" ]]; then
+            echo "ERROR: Custom tag not normalized correctly"
+            exit 1
+          fi
+
+  test-length-limits:
+    runs-on: ubuntu-latest
+    name: Test Length Limits
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Test with long service name
+        uses: ./
+        id: test-long
+        with:
+          service_name: "this-is-a-very-long-service-name-that-exceeds-normal-limits"
+          max_length: 40
+          
+      - name: Verify length limit
+        run: |
+          echo "Tag: ${{ steps.test-long.outputs.tag }}"
+          TAG_LENGTH=${#"${{ steps.test-long.outputs.tag }}"}
+          
+          if [ $TAG_LENGTH -gt 40 ]; then
+            echo "ERROR: Tag length ($TAG_LENGTH) exceeds limit (40)"
+            exit 1
+          fi
+
+  test-pull-request:
+    runs-on: ubuntu-latest
+    name: Test Pull Request Handling
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Test PR branch detection
+        uses: ./
+        id: test-pr
+        with:
+          service_name: pr-test
+          
+      - name: Verify PR branch
+        run: |
+          echo "Branch from PR: ${{ steps.test-pr.outputs.branch }}"
+          
+          # Should use the PR head ref, not the base branch
+          if [[ "${{ steps.test-pr.outputs.branch }}" == "main" ]]; then
+            echo "ERROR: Should use PR branch, not base branch"
+            exit 1
+          fi
