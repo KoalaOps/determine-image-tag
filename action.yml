@@ -129,6 +129,8 @@ runs:
           esac
           
           echo "🔨 Base tag: $TAG"
+          echo "DEBUG: Tag format is: $TAG_FORMAT"
+          echo "DEBUG: Include counter is: $INCLUDE_COUNTER"
           
           # Add counter if enabled and calculate required space
           COUNTER_SUFFIX=""
@@ -157,7 +159,10 @@ runs:
           fi
           
           # Add counter suffix
+          echo "DEBUG: Before adding suffix - TAG=$TAG"
+          echo "DEBUG: COUNTER_SUFFIX=$COUNTER_SUFFIX"
           TAG="${TAG}${COUNTER_SUFFIX}"
+          echo "DEBUG: After adding suffix - TAG=$TAG"
         fi
         
         echo "🎯 Final tag: $TAG"
