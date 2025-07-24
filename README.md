@@ -63,6 +63,7 @@ A GitHub Action that generates consistent, unique image tags for container build
 | `branch_ref` | Git branch reference | No | `github.ref` |
 | `pull_request_ref` | Pull request head ref | No | `github.event.pull_request.head.ref` |
 | `working_directory` | Working directory where the git repository is located | No | `.` |
+| `branch_separator` | Character to replace special characters in branch names | No | `-` |
 
 ### Tag Formats
 
@@ -87,7 +88,7 @@ The action generates tags in different formats based on your needs:
 **Notes:**
 - Dates are always in `YYYY-MM-DD` format
 - Counters are 2-digit zero-padded numbers (00, 01, 02, etc.)
-- Branch names have special characters (`/`, `:`, `@`, `#`) replaced with `_`
+- Branch names have special characters (`/`, `:`, `@`, `#`) replaced with `branch_separator` (default: `-`)
 - Tags are truncated if they exceed `max_length` (default: 63 characters)
 
 ## Outputs
@@ -124,7 +125,7 @@ Here are examples showing exactly what tags will be generated with different inp
     service_name: auth
     # On branch: feature/user-login
 ```
-**Result**: `auth_2024-01-15_feature_user-login_00` (note: `/` replaced with `_`)
+**Result**: `auth_2024-01-15_feature-user-login_00` (note: `/` replaced with `-`)
 
 ### Multiple Builds Same Day
 ```yaml
@@ -168,6 +169,16 @@ Here are examples showing exactly what tags will be generated with different inp
     custom_tag: v1.2.3-rc1
 ```
 **Result**: `v1.2.3-rc1` (auto-generation skipped)
+
+### Using Underscore as Branch Separator
+```yaml
+- uses: koalaops/determine-image-tag@v1
+  with:
+    service_name: api
+    branch_separator: "_"
+    # On branch: feature/new-api
+```
+**Result**: `api_2024-01-15_feature_new_api_00`
 
 ## Examples
 
