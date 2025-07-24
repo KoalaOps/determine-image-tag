@@ -134,18 +134,20 @@ runs:
           COUNTER_SUFFIX=""
           if [ "$INCLUDE_COUNTER" = "true" ]; then
             # Try to get counter from remote tags, fallback to local if remote fails
+            COUNTER=0
             if git ls-remote --tags origin >/dev/null 2>&1; then
-              # Use precise pattern to match only tags with our exact prefix and counter format
-              # Note: Using [0-9][0-9] instead of {2} to avoid grep issues
-              # Filter out the ^{} annotated tag references first
-              COUNTER=$(git ls-remote --tags origin | grep -v '\^{}' | grep -E "refs/tags/${TAG}_[0-9][0-9]$" 2>/dev/null | wc -l | tr -d ' ' || echo "0")
-              if [ -z "$COUNTER" ]; then
-                COUNTER=0
-              fi
+              # Count tags that match our pattern, excluding annotated tag markers
+              COUNTER=$(git ls-remote --tags origin | grep -v '\^{}' | grep -c "refs/tags/${TAG}_[0-9][0-9]$" || true)
+              # Ensure COUNTER is set to 0 if empty
+              COUNTER=${COUNTER:-0}
             else
               echo "⚠️  Cannot access remote tags, using local tags for counter"
-              COUNTER=$(git tag -l "${TAG}_[0-9][0-9]" | wc -l | tr -d ' ')
+              # Count local tags that match our pattern
+              COUNTER=$(git tag -l "${TAG}_[0-9][0-9]" | grep -c . || true)
+              COUNTER=${COUNTER:-0}
             fi
+            
+            # Format counter with leading zero
             COUNTER=$(printf '%02d' "$COUNTER")
             COUNTER_SUFFIX="_${COUNTER}"
             echo "🔢 Counter: $COUNTER"
