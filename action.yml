@@ -129,34 +129,25 @@ runs:
           esac
           
           echo "🔨 Base tag: $TAG"
-          echo "DEBUG: Tag format is: $TAG_FORMAT"
-          echo "DEBUG: Include counter is: $INCLUDE_COUNTER"
           
           # Add counter if enabled and calculate required space
           COUNTER_SUFFIX=""
           if [ "$INCLUDE_COUNTER" = "true" ]; then
             # Try to get counter from remote tags, fallback to local if remote fails
-            COUNTER=0
             if git ls-remote --tags origin >/dev/null 2>&1; then
               # Use precise pattern to match only tags with our exact prefix and counter format
-              COUNTER=$(git ls-remote --tags origin | grep -E "refs/tags/${TAG}_[0-9][0-9](\^{})?$" | wc -l || echo "0")
+              # Note: Using [0-9][0-9] instead of {2} to avoid grep issues
+              COUNTER=$(git ls-remote --tags origin | grep -E "refs/tags/${TAG}_[0-9][0-9](\^{})?$" 2>/dev/null | wc -l)
+              if [ -z "$COUNTER" ]; then
+                COUNTER=0
+              fi
             else
               echo "⚠️  Cannot access remote tags, using local tags for counter"
               COUNTER=$(git tag -l "${TAG}_[0-9][0-9]" | wc -l | tr -d ' ')
             fi
-            echo "🔢 Raw counter value: $COUNTER"
-            echo "DEBUG: About to format counter with printf '%02d' and value '$COUNTER'"
-            # Try different formatting approaches to debug
-            TEST1=$(printf '%02d' "$COUNTER")
-            TEST2=$(printf '%02d' 0)
-            TEST3=$(printf '%.2d' "$COUNTER")
-            echo "DEBUG: TEST1 (printf '%02d' \"\$COUNTER\"): '$TEST1' (length: ${#TEST1})"
-            echo "DEBUG: TEST2 (printf '%02d' 0): '$TEST2' (length: ${#TEST2})"
-            echo "DEBUG: TEST3 (printf '%.2d' \"\$COUNTER\"): '$TEST3' (length: ${#TEST3})"
             COUNTER=$(printf '%02d' "$COUNTER")
-            echo "🔢 Formatted counter: $COUNTER"
             COUNTER_SUFFIX="_${COUNTER}"
-            echo "🔢 Counter suffix: $COUNTER_SUFFIX"
+            echo "🔢 Counter: $COUNTER"
           fi
           
           # Handle length limits and truncation (account for counter suffix length)
@@ -167,10 +158,7 @@ runs:
           fi
           
           # Add counter suffix
-          echo "DEBUG: Before adding suffix - TAG=$TAG"
-          echo "DEBUG: COUNTER_SUFFIX=$COUNTER_SUFFIX"
           TAG="${TAG}${COUNTER_SUFFIX}"
-          echo "DEBUG: After adding suffix - TAG=$TAG"
         fi
         
         echo "🎯 Final tag: $TAG"
