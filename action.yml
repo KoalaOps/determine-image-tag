@@ -77,10 +77,6 @@ runs:
         PR_REF="${{ inputs.pull_request_ref || github.event.pull_request.head.ref }}"
         BRANCH_SEP="${{ inputs.branch_separator }}"
         
-        echo "DEBUG: BRANCH_REF=$BRANCH_REF"
-        echo "DEBUG: github.ref=${{ github.ref }}"
-        echo "DEBUG: inputs.branch_ref=${{ inputs.branch_ref }}"
-        
         # Validate max_length
         if ! [[ "$MAX_LENGTH" =~ ^[0-9]+$ ]] || [ "$MAX_LENGTH" -le 0 ]; then
           echo "❌ Error: max_length must be a positive integer"
@@ -101,7 +97,10 @@ runs:
           echo "✅ Using custom tag: $TAG"
         else
           # Determine branch name
-          if [ -n "$PR_REF" ]; then
+          # Priority: explicit branch_ref input > PR ref > github.ref
+          if [ -n "${{ inputs.branch_ref }}" ]; then
+            BRANCH=$(echo "$BRANCH_REF" | sed 's#refs/heads/##')
+          elif [ -n "$PR_REF" ]; then
             BRANCH="$PR_REF"
           else
             BRANCH=$(echo "$BRANCH_REF" | sed 's#refs/heads/##')
