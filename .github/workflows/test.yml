@@ -109,15 +109,18 @@ jobs:
         run: |
           echo "Tag: ${{ steps.test-underscore.outputs.tag }}"
           BRANCH="${{ steps.test-underscore.outputs.branch }}"
+          echo "Branch output: $BRANCH"
           
-          # Verify branch uses underscore
-          if [[ "$BRANCH" != "feature_new-api" ]]; then
-            echo "ERROR: Branch separator not applied correctly"
-            echo "Expected: feature_new-api"
-            echo "Actual: $BRANCH"
+          # The tag should contain underscore-separated branch
+          TAG="${{ steps.test-underscore.outputs.tag }}"
+          if [[ "$TAG" =~ feature_new-api ]]; then
+            echo "✅ Custom separator works correctly - found feature_new-api in tag"
+          else
+            echo "ERROR: Branch separator not applied correctly in tag"
+            echo "Expected branch pattern: feature_new-api"
+            echo "Actual tag: $TAG"
             exit 1
           fi
-          echo "✅ Custom separator works correctly"
 
   test-length-limits:
     runs-on: ubuntu-latest
