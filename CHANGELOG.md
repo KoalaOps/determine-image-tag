@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1] - 2024-01-26
+
+### Added
+- Configurable `branch_separator` input to customize character used for normalizing branch names (default: `-`)
+
+### Fixed
+- Counter generation now produces correct 2-digit format (00, 01, 02) instead of 4-digit format (0000)
+- Branch_ref input now correctly takes priority over PR ref when explicitly provided
+- Test expectations updated for new hyphen default separator
+
+### Changed
+- Default branch separator changed from underscore (`_`) to hyphen (`-`) for better Kubernetes compatibility
+- Simplified counter generation logic using `grep -c` for more reliable counting
+- Removed example workflow that required AWS authentication
+
 ## [1.0.0] - 2024-01-15
 
 ### Added
