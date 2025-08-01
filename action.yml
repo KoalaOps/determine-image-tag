@@ -18,7 +18,7 @@ inputs:
     required: false
     default: ""
   tag_format:
-    description: "Tag format: 'service-date-branch-counter' (default), 'branch-date-counter', or 'date-branch'"
+    description: "Tag format: 'service-date-branch-counter' (default), 'branch-date-counter', 'branch-date', or 'date-branch'. All formats support underscore aliases (e.g., 'branch_date_counter')"
     required: false
     default: "service-date-branch-counter"
   max_length:
@@ -115,19 +115,22 @@ runs:
           DATE=$(date +'%Y-%m-%d')
           echo "📅 Date: $DATE"
           
-          # Generate tag based on format
+          # Generate tag based on format (support both dash and underscore aliases)
           case "$TAG_FORMAT" in
-            "service-date-branch-counter")
+            "service-date-branch-counter"|"service_date_branch_counter")
               if [ -n "$SERVICE_NAME" ]; then
                 TAG="${SERVICE_NAME}_${DATE}_${BRANCH}"
               else
                 TAG="${DATE}_${BRANCH}"
               fi
               ;;
-            "branch-date-counter")
+            "branch-date-counter"|"branch_date_counter")
               TAG="${BRANCH}_${DATE}"
               ;;
-            "date-branch")
+            "branch-date"|"branch_date")
+              TAG="${BRANCH}_${DATE}"
+              ;;
+            "date-branch"|"date_branch")
               TAG="${DATE}_${BRANCH}"
               ;;
             *)

@@ -80,6 +80,11 @@ The action generates tags in different formats based on your needs:
 - Example: `feature-login_2024-01-15_00`
 - Example: `main_2024-01-15_03`
 
+#### `branch-date`
+- Format: `{branch}_{date}` (no counter)
+- Example: `main_2024-01-15`
+- Example: `feature-xyz_2024-01-15`
+
 #### `date-branch`
 - Format: `{date}_{branch}` (no counter)
 - Example: `2024-01-15_develop`
@@ -90,6 +95,7 @@ The action generates tags in different formats based on your needs:
 - Counters are 2-digit zero-padded numbers (00, 01, 02, etc.)
 - Branch names have special characters (`/`, `:`, `@`, `#`) replaced with `branch_separator` (default: `-`)
 - Tags are truncated if they exceed `max_length` (default: 63 characters)
+- All tag formats support both dash (`-`) and underscore (`_`) separators (e.g., `branch-date` and `branch_date` are equivalent)
 
 ## Outputs
 
@@ -146,12 +152,20 @@ Here are examples showing exactly what tags will be generated with different inp
 
 ### Different Tag Formats
 ```yaml
-# Branch-Date format
+# Branch-Date format with counter
 - uses: koalaops/determine-image-tag@v1
   with:
     tag_format: branch-date-counter
 ```
 **Result**: `main_2024-01-15_00`
+
+```yaml
+# Branch-Date format without counter
+- uses: koalaops/determine-image-tag@v1
+  with:
+    tag_format: branch-date
+```
+**Result**: `main_2024-01-15`
 
 ```yaml
 # Date-Branch format (no counter)
@@ -161,6 +175,14 @@ Here are examples showing exactly what tags will be generated with different inp
     include_counter: false
 ```
 **Result**: `2024-01-15_main`
+
+```yaml
+# Using underscore alias
+- uses: koalaops/determine-image-tag@v1
+  with:
+    tag_format: branch_date_counter
+```
+**Result**: `main_2024-01-15_00`
 
 ### Custom Tag Override
 ```yaml
