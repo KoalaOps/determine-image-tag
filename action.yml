@@ -125,12 +125,18 @@ runs:
               fi
               ;;
             "branch-date-counter"|"branch_date_counter")
-              TAG="${BRANCH}_${DATE}"
+              if [ -n "$SERVICE_NAME" ]; then
+                TAG="${SERVICE_NAME}_${BRANCH}_${DATE}"
+              else
+                TAG="${BRANCH}_${DATE}"
+              fi
               ;;
             "branch-date"|"branch_date")
+              # branch-date format never includes service name
               TAG="${BRANCH}_${DATE}"
               ;;
             "date-branch"|"date_branch")
+              # date-branch format never includes service name
               TAG="${DATE}_${BRANCH}"
               ;;
             *)
