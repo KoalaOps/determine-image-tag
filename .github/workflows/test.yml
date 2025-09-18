@@ -186,6 +186,45 @@ jobs:
             exit 1
           fi
           echo "✅ Tag without counter truncated correctly to $TAG_LENGTH characters"
+      
+      - name: Test very long branch name truncation preserves date
+        uses: ./
+        id: test-preserve-date
+        with:
+          tag_format: "branch-date-counter"
+          branch_ref: "refs/heads/dev-12469-load-nitroads-script-only-on-pages-with-ads"
+          max_length: 63
+          include_counter: true
+          
+      - name: Verify date is preserved in truncation
+        run: |
+          TAG="${{ steps.test-preserve-date.outputs.tag }}"
+          echo "Tag with long branch: $TAG"
+          TAG_LENGTH=${#TAG}
+          
+          # Check tag doesn't exceed limit
+          if [ $TAG_LENGTH -gt 63 ]; then
+            echo "ERROR: Tag length ($TAG_LENGTH) exceeds limit (63)"
+            exit 1
+          fi
+          
+          # Verify date pattern is intact (YYYY-MM-DD format)
+          if [[ ! "$TAG" =~ [0-9]{4}-[0-9]{2}-[0-9]{2} ]]; then
+            echo "ERROR: Date was corrupted during truncation"
+            echo "Tag: $TAG"
+            echo "Expected to contain pattern: YYYY-MM-DD"
+            exit 1
+          fi
+          
+          # Verify counter suffix is intact
+          if [[ ! "$TAG" =~ _[0-9]{2}$ ]]; then
+            echo "ERROR: Counter suffix was corrupted during truncation"
+            echo "Tag: $TAG"
+            echo "Expected to end with: _NN"
+            exit 1
+          fi
+          
+          echo "✅ Date and counter preserved correctly in truncation"
           
 
   test-pull-request:
