@@ -96,6 +96,7 @@ The action generates tags in different formats based on your needs:
 - Branch names have special characters (`/`, `:`, `@`, `#`) replaced with `branch_separator` (default: `-`)
 - Tags are truncated if they exceed `max_length` (default: 63 characters)
 - All tag formats support both dash (`-`) and underscore (`_`) separators (e.g., `branch-date` and `branch_date` are equivalent)
+- At least 10 chars are reserved for branch names, in case of very long service names
 
 ## Outputs
 
