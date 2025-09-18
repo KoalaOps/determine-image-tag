@@ -145,6 +145,48 @@ jobs:
             exit 1
           fi
           echo "✅ Tag length ($TAG_LENGTH) is within limit (40)"
+      
+      - name: Test custom tag truncation
+        uses: ./
+        id: test-custom-truncate
+        with:
+          custom_tag: "this-is-an-extremely-long-custom-tag-that-definitely-needs-truncation"
+          max_length: 30
+          
+      - name: Verify custom tag truncation
+        run: |
+          TAG="${{ steps.test-custom-truncate.outputs.tag }}"
+          echo "Truncated custom tag: $TAG"
+          TAG_LENGTH=${#TAG}
+          
+          if [ $TAG_LENGTH -gt 30 ]; then
+            echo "ERROR: Custom tag length ($TAG_LENGTH) exceeds limit (30)"
+            exit 1
+          fi
+          echo "✅ Custom tag truncated correctly to $TAG_LENGTH characters"
+      
+      - name: Test tag without counter truncation
+        uses: ./
+        id: test-no-counter-truncate
+        with:
+          service_name: "very-long-service-name"
+          tag_format: "service-date-branch-counter"
+          include_counter: false
+          max_length: 35
+          branch_ref: "refs/heads/feature/long-branch-name"
+          
+      - name: Verify no-counter truncation
+        run: |
+          TAG="${{ steps.test-no-counter-truncate.outputs.tag }}"
+          echo "Tag without counter: $TAG"
+          TAG_LENGTH=${#TAG}
+          
+          if [ $TAG_LENGTH -gt 35 ]; then
+            echo "ERROR: Tag length ($TAG_LENGTH) exceeds limit (35)"
+            exit 1
+          fi
+          echo "✅ Tag without counter truncated correctly to $TAG_LENGTH characters"
+          
 
   test-pull-request:
     runs-on: ubuntu-latest
