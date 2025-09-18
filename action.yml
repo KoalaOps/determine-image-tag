@@ -94,6 +94,11 @@ runs:
         # Use custom tag if provided
         if [ -n "$CUSTOM_TAG" ]; then
           TAG=$(echo "$CUSTOM_TAG" | tr '/:' "$BRANCH_SEP")
+          # Apply truncation to custom tags
+          if [ ${#TAG} -gt "$MAX_LENGTH" ]; then
+            TAG=${TAG:0:$MAX_LENGTH}
+            echo "✂️ Truncated custom tag to $MAX_LENGTH characters"
+          fi
           echo "✅ Using custom tag: $TAG"
         else
           # Determine branch name
@@ -169,9 +174,11 @@ runs:
           
           # Handle length limits and truncation (account for counter suffix length)
           SUFFIX_LENGTH=${#COUNTER_SUFFIX}
-          if [ ${#TAG} -gt $((MAX_LENGTH - SUFFIX_LENGTH)) ]; then
-            TAG=${TAG:0:$((MAX_LENGTH - SUFFIX_LENGTH))}
-            echo "✂️ Truncated tag: $TAG"
+          AVAILABLE_LENGTH=$((MAX_LENGTH - SUFFIX_LENGTH))
+          
+          if [ ${#TAG} -gt "$AVAILABLE_LENGTH" ]; then
+            TAG=${TAG:0:$AVAILABLE_LENGTH}
+            echo "✂️ Truncated tag to fit within $MAX_LENGTH character limit"
           fi
           
           # Add counter suffix
