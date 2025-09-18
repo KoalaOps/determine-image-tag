@@ -120,37 +120,71 @@ runs:
           DATE=$(date +'%Y-%m-%d')
           echo "📅 Date: $DATE"
           
-          # Generate tag based on format (support both dash and underscore aliases)
+          # Step 1: Calculate available length for branch
+          # Account for fixed parts: service (if any), date, counter (if any), and separators
+          AVAILABLE_FOR_BRANCH=$MAX_LENGTH
+          MIN_BRANCH_LENGTH=10  # Minimum chars to reserve for branch
+          
+          # Reserve space for counter if needed
+          if [ "$INCLUDE_COUNTER" = "true" ]; then
+            AVAILABLE_FOR_BRANCH=$((AVAILABLE_FOR_BRANCH - 3))  # _NN = 3 chars
+          fi
+
+          # If format contains date, then we need to reserve space for date
+          if [[ "$TAG_FORMAT" =~ "date" ]]; then
+            AVAILABLE_FOR_BRANCH=$((AVAILABLE_FOR_BRANCH - 11))  # date (10) + separator (1)
+          fi
+
+          # Truncate service name if needed to preserve minimum branch space
+          TRUNCATED_SERVICE="$SERVICE_NAME"
+          if [ -n "$SERVICE_NAME" ]; then
+            # Max service length = available space - minimum branch - separator
+            MAX_SERVICE_LENGTH=$((AVAILABLE_FOR_BRANCH - MIN_BRANCH_LENGTH - 1))
+            
+            if [ ${#SERVICE_NAME} -gt "$MAX_SERVICE_LENGTH" ] && [ "$MAX_SERVICE_LENGTH" -gt 0 ]; then
+              TRUNCATED_SERVICE=${SERVICE_NAME:0:$MAX_SERVICE_LENGTH}
+              echo "✂️ Truncating service name to $MAX_SERVICE_LENGTH characters to preserve branch"
+            fi
+            
+            # Update available space for branch after service
+            AVAILABLE_FOR_BRANCH=$((AVAILABLE_FOR_BRANCH - ${#TRUNCATED_SERVICE} - 1))  # service + _
+          fi
+          
+          # Step 2: Truncate branch if needed
+          TRUNCATED_BRANCH="$BRANCH"
+          if [ "$AVAILABLE_FOR_BRANCH" -le 0 ]; then
+            TRUNCATED_BRANCH=""
+            echo "⚠️ No space available for branch name"
+          elif [ ${#BRANCH} -gt "$AVAILABLE_FOR_BRANCH" ]; then
+            TRUNCATED_BRANCH=${BRANCH:0:$AVAILABLE_FOR_BRANCH}
+            echo "✂️ Truncating branch to $AVAILABLE_FOR_BRANCH characters"
+          fi
+          
+          # Step 3: Build the tag with (potentially truncated) service and branch
           case "$TAG_FORMAT" in
-            "service-date-branch-counter"|"service_date_branch_counter")
-              if [ -n "$SERVICE_NAME" ]; then
-                TAG="${SERVICE_NAME}_${DATE}_${BRANCH}"
+            "service-date-branch-counter"|"service_date_branch_counter"|"service-date-branch"|"service_date_branch")
+              if [ -n "$TRUNCATED_SERVICE" ]; then
+                TAG="${TRUNCATED_SERVICE}_${DATE}_${TRUNCATED_BRANCH}"
               else
-                TAG="${DATE}_${BRANCH}"
+                TAG="${DATE}_${TRUNCATED_BRANCH}"
               fi
               ;;
-            "branch-date-counter"|"branch_date_counter")
-              # branch-date-counter format never includes service name
-              TAG="${BRANCH}_${DATE}"
+            "branch-date"|"branch_date"|"branch-date-counter"|"branch_date_counter")
+              TAG="${TRUNCATED_BRANCH}_${DATE}"
               ;;
-            "branch-date"|"branch_date")
-              # branch-date format never includes service name
-              TAG="${BRANCH}_${DATE}"
-              ;;
-            "date-branch"|"date_branch")
-              # date-branch format never includes service name
-              TAG="${DATE}_${BRANCH}"
+            "date-branch"|"date_branch"|"date-branch-counter"|"date_branch_counter")
+              TAG="${DATE}_${TRUNCATED_BRANCH}"
               ;;
             *)
-              echo "❌ Invalid tag format: $TAG_FORMAT"
+              echo "❌ Invalid TAG_FORMAT: $TAG_FORMAT"
+              echo "Valid formats: service-date-branch, branch-date, date-branch (variants: with or without counter suffix, with _ or - separator)"
               exit 1
               ;;
           esac
           
           echo "🔨 Base tag: $TAG"
           
-          # Add counter if enabled and calculate required space
-          COUNTER_SUFFIX=""
+          # Add counter if enabled
           if [ "$INCLUDE_COUNTER" = "true" ]; then
             # Try to get counter from remote tags, fallback to local if remote fails
             COUNTER=0
@@ -170,19 +204,10 @@ runs:
             COUNTER=$(printf '%02d' "$COUNTER")
             COUNTER_SUFFIX="_${COUNTER}"
             echo "🔢 Counter: $COUNTER"
+            
+            # Add counter suffix
+            TAG="${TAG}${COUNTER_SUFFIX}"
           fi
-          
-          # Handle length limits and truncation (account for counter suffix length)
-          SUFFIX_LENGTH=${#COUNTER_SUFFIX}
-          AVAILABLE_LENGTH=$((MAX_LENGTH - SUFFIX_LENGTH))
-          
-          if [ ${#TAG} -gt "$AVAILABLE_LENGTH" ]; then
-            TAG=${TAG:0:$AVAILABLE_LENGTH}
-            echo "✂️ Truncated tag to fit within $MAX_LENGTH character limit"
-          fi
-          
-          # Add counter suffix
-          TAG="${TAG}${COUNTER_SUFFIX}"
         fi
         
         echo "🎯 Final tag: $TAG"
