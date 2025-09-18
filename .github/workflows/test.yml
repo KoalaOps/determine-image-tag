@@ -224,8 +224,7 @@ jobs:
             exit 1
           fi
           
-          echo "✅ Date and counter preserved correctly in truncation"
-          
+          echo "✅ Date and counter preserved correctly in truncation"          
 
   test-pull-request:
     runs-on: ubuntu-latest
