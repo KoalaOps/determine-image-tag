@@ -192,7 +192,7 @@ jobs:
         id: test-preserve-date
         with:
           tag_format: "branch-date-counter"
-          branch_ref: "refs/heads/dev-12469-load-nitroads-script-only-on-pages-with-ads"
+          branch_ref: "refs/heads/dev-12345-some-long-branch-name-very-long-indeeeeeeeeeeeed"
           max_length: 63
           include_counter: true
           
@@ -224,7 +224,7 @@ jobs:
             exit 1
           fi
           
-          echo "✅ Date and counter preserved correctly in truncation"          
+          echo "✅ Date and counter preserved correctly in truncation"
 
   test-pull-request:
     runs-on: ubuntu-latest
