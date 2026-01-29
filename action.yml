@@ -45,6 +45,10 @@ inputs:
     description: "Character to replace special characters in branch names"
     required: false
     default: "-"
+  separator:
+    description: "Character to separate tag components (service, date, branch, counter). Use '-' for semver-compatible tags."
+    required: false
+    default: "_"
 
 outputs:
   tag:
@@ -76,7 +80,8 @@ runs:
         BRANCH_REF="${{ inputs.branch_ref || github.ref }}"
         PR_REF="${{ inputs.pull_request_ref || github.event.pull_request.head.ref }}"
         BRANCH_SEP="${{ inputs.branch_separator }}"
-        
+        SEP="${{ inputs.separator }}"
+
         # Validate max_length
         if ! [[ "$MAX_LENGTH" =~ ^[0-9]+$ ]] || [ "$MAX_LENGTH" -le 0 ]; then
           echo "❌ Error: max_length must be a positive integer"
@@ -127,19 +132,19 @@ runs:
           
           # Reserve space for counter if needed
           if [ "$INCLUDE_COUNTER" = "true" ]; then
-            AVAILABLE_FOR_BRANCH=$((AVAILABLE_FOR_BRANCH - 3))  # _NN = 3 chars
+            AVAILABLE_FOR_BRANCH=$((AVAILABLE_FOR_BRANCH - ${#SEP} - 2))  # separator + NN
           fi
 
           # If format contains date, then we need to reserve space for date
           if [[ "$TAG_FORMAT" =~ "date" ]]; then
-            AVAILABLE_FOR_BRANCH=$((AVAILABLE_FOR_BRANCH - 11))  # date (10) + separator (1)
+            AVAILABLE_FOR_BRANCH=$((AVAILABLE_FOR_BRANCH - 10 - ${#SEP}))  # date (10) + separator
           fi
 
           # Truncate service name if needed to preserve minimum branch space
           TRUNCATED_SERVICE="$SERVICE_NAME"
           if [ -n "$SERVICE_NAME" ]; then
             # Max service length = available space - minimum branch - separator
-            MAX_SERVICE_LENGTH=$((AVAILABLE_FOR_BRANCH - MIN_BRANCH_LENGTH - 1))
+            MAX_SERVICE_LENGTH=$((AVAILABLE_FOR_BRANCH - MIN_BRANCH_LENGTH - ${#SEP}))
             
             if [ ${#SERVICE_NAME} -gt "$MAX_SERVICE_LENGTH" ] && [ "$MAX_SERVICE_LENGTH" -gt 0 ]; then
               TRUNCATED_SERVICE=${SERVICE_NAME:0:$MAX_SERVICE_LENGTH}
@@ -147,7 +152,7 @@ runs:
             fi
             
             # Update available space for branch after service
-            AVAILABLE_FOR_BRANCH=$((AVAILABLE_FOR_BRANCH - ${#TRUNCATED_SERVICE} - 1))  # service + _
+            AVAILABLE_FOR_BRANCH=$((AVAILABLE_FOR_BRANCH - ${#TRUNCATED_SERVICE} - ${#SEP}))  # service + separator
           fi
           
           # Step 2: Truncate branch if needed
@@ -164,23 +169,23 @@ runs:
           case "$TAG_FORMAT" in
             "service-date-branch-counter"|"service_date_branch_counter"|"service-date-branch"|"service_date_branch")
               if [ -n "$TRUNCATED_SERVICE" ]; then
-                TAG="${TRUNCATED_SERVICE}_${DATE}_${TRUNCATED_BRANCH}"
+                TAG="${TRUNCATED_SERVICE}${SEP}${DATE}${SEP}${TRUNCATED_BRANCH}"
               else
-                TAG="${DATE}_${TRUNCATED_BRANCH}"
+                TAG="${DATE}${SEP}${TRUNCATED_BRANCH}"
               fi
               ;;
             "service-branch-date-counter"|"service_branch_date_counter"|"service-branch-date"|"service_branch_date")
               if [ -n "$TRUNCATED_SERVICE" ]; then
-                TAG="${TRUNCATED_SERVICE}_${TRUNCATED_BRANCH}_${DATE}"
+                TAG="${TRUNCATED_SERVICE}${SEP}${TRUNCATED_BRANCH}${SEP}${DATE}"
               else
-                TAG="${TRUNCATED_BRANCH}_${DATE}"
+                TAG="${TRUNCATED_BRANCH}${SEP}${DATE}"
               fi
               ;;
             "branch-date"|"branch_date"|"branch-date-counter"|"branch_date_counter")
-              TAG="${TRUNCATED_BRANCH}_${DATE}"
+              TAG="${TRUNCATED_BRANCH}${SEP}${DATE}"
               ;;
             "date-branch"|"date_branch"|"date-branch-counter"|"date_branch_counter")
-              TAG="${DATE}_${TRUNCATED_BRANCH}"
+              TAG="${DATE}${SEP}${TRUNCATED_BRANCH}"
               ;;
             *)
               echo "❌ Invalid TAG_FORMAT: $TAG_FORMAT"
@@ -197,19 +202,19 @@ runs:
             COUNTER=0
             if git ls-remote --tags origin >/dev/null 2>&1; then
               # Count tags that match our pattern, excluding annotated tag markers
-              COUNTER=$(git ls-remote --tags origin | grep -v '\^{}' | grep -c "refs/tags/${TAG}_[0-9][0-9]$" || true)
+              COUNTER=$(git ls-remote --tags origin | grep -v '\^{}' | grep -c "refs/tags/${TAG}${SEP}[0-9][0-9]$" || true)
               # Ensure COUNTER is set to 0 if empty
               COUNTER=${COUNTER:-0}
             else
               echo "⚠️  Cannot access remote tags, using local tags for counter"
               # Count local tags that match our pattern
-              COUNTER=$(git tag -l "${TAG}_[0-9][0-9]" | grep -c . || true)
+              COUNTER=$(git tag -l "${TAG}${SEP}[0-9][0-9]" | grep -c . || true)
               COUNTER=${COUNTER:-0}
             fi
-            
+
             # Format counter with leading zero
             COUNTER=$(printf '%02d' "$COUNTER")
-            COUNTER_SUFFIX="_${COUNTER}"
+            COUNTER_SUFFIX="${SEP}${COUNTER}"
             echo "🔢 Counter: $COUNTER"
             
             # Add counter suffix
