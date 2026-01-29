@@ -64,6 +64,7 @@ A GitHub Action that generates consistent, unique image tags for container build
 | `pull_request_ref` | Pull request head ref | No | `github.event.pull_request.head.ref` |
 | `working_directory` | Working directory where the git repository is located | No | `.` |
 | `branch_separator` | Character to replace special characters in branch names | No | `-` |
+| `separator` | Character to separate tag components (service, date, branch, counter). Use `-` for semver-compatible tags. | No | `_` |
 
 ### Tag Formats
 
@@ -100,6 +101,7 @@ The action generates tags in different formats based on your needs:
 - Dates are always in `YYYY-MM-DD` format
 - Counters are 2-digit zero-padded numbers (00, 01, 02, etc.)
 - Branch names have special characters (`/`, `:`, `@`, `#`) replaced with `branch_separator` (default: `-`)
+- Tag components are joined using `separator` (default: `_`). Use `-` for semver-compatible tags.
 - Tags are truncated if they exceed `max_length` (default: 63 characters)
 - All tag formats support both dash (`-`) and underscore (`_`) separators (e.g., `branch-date` and `branch_date` are equivalent)
 - At least 10 chars are reserved for branch names, in case of very long service names
@@ -217,6 +219,18 @@ Here are examples showing exactly what tags will be generated with different inp
     # On branch: feature/new-api
 ```
 **Result**: `api_2024-01-15_feature_new_api_00`
+
+### Semver-Compatible Tags (Hyphen Separator)
+```yaml
+- uses: koalaops/determine-image-tag@v1
+  with:
+    service_name: api
+    separator: "-"
+    # On branch: main
+```
+**Result**: `api-2024-01-15-main-00`
+
+This is useful for systems that require semver-compatible tags (e.g., Capgo mobile deployments).
 
 ## Examples
 
